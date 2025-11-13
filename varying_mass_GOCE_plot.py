@@ -410,8 +410,8 @@ def main():
     raw_epochs, raw_mass_values = load_and_interpolate_mass_data("GOCE-Mass-Properties.txt") 
 
     #define the start and end epochs, format (Y, m, d, H, M, S)
-    simulation_start_epoch = DateTime(2009, 8, 1, 15, 51, 35).to_epoch()
-    simulation_end_epoch = DateTime(2009, 9, 1).to_epoch() 
+    simulation_start_epoch = DateTime(2009, 5, 1, 0, 0, 0).to_epoch()
+    simulation_end_epoch = DateTime(2009, 5, 3).to_epoch() 
 
     #2. Set up the environment
     bodies = setup_environment(simulation_start_epoch)
