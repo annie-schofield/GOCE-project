@@ -63,5 +63,5 @@ python varying_mass_GOCE_plot.py
 
 ### 5. View Results
 
-The script will print simulation details to the console, including initial/final mass and state vectors. It will then display the three plots (3D trajectory, ground track, and mass over time). That is, if everything has worked!
-```
+The script will print simulation details to the console, including initial/final mass and state vectors. It will then display the three plots (3D trajectory, ground track, and mass over time).
+Congratulations, it worked! 
