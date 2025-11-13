@@ -47,7 +47,7 @@ pip install scipy
 
 ### 2. Data File
 
-You **must** have the `GOCE-Mass-Properties.txt` file in the same directory as the Python script (`goce_simulation.py`). This file contains the raw mass data required for the simulation. You can download it from this repository, or the ESA link at the beginning of this README.
+You **must** have the `GOCE-Mass-Properties.txt` file in the same directory as the Python script (`varying_mass_GOCE_plot.py`). This file contains the raw mass data required for the simulation. You can download it from this repository, or the ESA link at the beginning of this README.
 
 ### 3. SPICE Kernels
 
@@ -58,7 +58,7 @@ The script uses `spice.load_standard_kernels()` to load standard SPICE kernels. 
 Once the prerequisites are met and the data file is in place, simply run the script from your terminal:
 
 ```bash
-python goce_simulation.py
+python varying_mass_GOCE_plot.py
 ```
 
 ### 5. View Results
