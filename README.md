@@ -7,8 +7,6 @@ This project performs an orbit propagation of the **GOCE** (*Gravity Field and S
 A key feature of this simulation is the realistic modelling of the satellite's mass. Instead of a constant mass, this script loads real mission data from the `GOCE-Mass-Properties.txt` file, interpolates it, and uses the resulting function to model the satellite's decreasing mass over time (due to propellant consumption).
 It also takes into account orbital pertubations, modelling spherical harmonic gravity using the gcrs_to_itrs rotation model for the Earth and taking into account the atmosphere and aerodynamic drag- important since GOCE is an LEO satellite. I have just added in Solar Radiation Pressure (SRP) too, currently modelling GOCE as a cannonball- I will likely change this to a panelled target in future versions. 
 
-*Note: not all numbers are accurate to GOCE, some are placeholders/approximations for the meantime. I am doing plenty of research, some of this stuff is a little tricky to find!*
-
 ## Key Features
 
 * **Orbit Propagation**: Uses tudatpy to simulate the satellite's trajectory.
@@ -67,3 +65,5 @@ python varying_mass_GOCE_plot.py
 
 The script will print simulation details to the console, including initial/final mass and state vectors. It will then display the three plots (3D trajectory, ground track, and mass over time).
 Congratulations, it worked! 
+
+*Note: not all numbers are accurate to GOCE, some are placeholders/approximations for the meantime. I am doing plenty of research, some of this stuff is a little tricky to find!*
