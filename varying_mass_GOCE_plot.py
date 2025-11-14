@@ -9,6 +9,7 @@ from tudatpy.dynamics import environment_setup, propagation_setup
 from tudatpy.astro import element_conversion
 from tudatpy.util import result2array
 from tudatpy.astro.time_representation import DateTime
+from tudatpy import constants
 
 # global variables
 goce_mass_interpolator = None
@@ -65,8 +66,6 @@ def load_and_interpolate_mass_data(file_path):
         raise ValueError("Failed to load any mass data from the file.")
     
     return epochs, mass_values
-
-
 
 def setup_environment(simulation_start_epoch):
     """
@@ -128,7 +127,21 @@ def setup_environment(simulation_start_epoch):
     )
     #here we go, put these together: assigning aerodynamic settings
     body_settings.get("GOCE").aerodynamic_coefficient_settings = aero_coefficient_settings
+    
+    #define the radiation source, sun, for solar radiation pressure (SRP)
+    # (Note: Using 1367.0 W/m^2 as the solar constant at 1 AU)
+    luminosity_model = environment_setup.radiation_pressure.irradiance_based_constant_luminosity( 1367.0, constants.ASTRONOMICAL_UNIT)
+    body_settings.get( "Sun" ).radiation_source_settings = environment_setup.radiation_pressure.isotropic_radiation_source(luminosity_model)
+    
+    #define the radiation target for SRP, GOCE
+    reference_area_radiation = 0.9
+    radiation_pressure_coefficient = 1.8
+    occulting_bodies_dict = dict()
+    occulting_bodies_dict[ "Sun" ] = [ "Earth" ]
 
+    body_settings.get("GOCE").radiation_pressure_target_settings = environment_setup.radiation_pressure.cannonball_radiation_target(
+        reference_area_radiation, radiation_pressure_coefficient, occulting_bodies_dict )
+    
     #1.3: create the system of bodies
     bodies = environment_setup.create_system_of_bodies(body_settings)
 
@@ -140,7 +153,6 @@ def setup_environment(simulation_start_epoch):
     bodies.get("GOCE").mass = initial_mass
 
     return bodies
-
 
 def setup_propagation(bodies, simulation_start_epoch, simulation_end_epoch):
     """
@@ -160,7 +172,7 @@ def setup_propagation(bodies, simulation_start_epoch, simulation_end_epoch):
     #orders needed for spherical_harmonic_gravity, the earth is squashed
     maximum_degree = 12
     maximum_order = 6
-    
+
     #actually defines GOCE acceleration settings
     acceleration_settings_GOCE = dict(
         Earth=[
@@ -169,8 +181,12 @@ def setup_propagation(bodies, simulation_start_epoch, simulation_end_epoch):
             propagation_setup.acceleration.aerodynamic()
             ],
         Moon = [propagation_setup.acceleration.point_mass_gravity()],
-        Sun = [propagation_setup.acceleration.point_mass_gravity()]
+        Sun = [
+            propagation_setup.acceleration.point_mass_gravity(),
+            propagation_setup.acceleration.radiation_pressure()
+            ]
     )
+    
     #puts each objects acceleration_settings into a dictionary
     acceleration_settings = {"GOCE": acceleration_settings_GOCE}
 
@@ -233,7 +249,6 @@ def setup_propagation(bodies, simulation_start_epoch, simulation_end_epoch):
     
     return propagator_settings, bodies_to_propagate
 
-
 def run_simulation(bodies, propagator_settings):
     """
     Actually does the propagation, does some print statements too. 
@@ -249,7 +264,6 @@ def run_simulation(bodies, propagator_settings):
     print("Dynamics simulator has been created, and propagation finished woohoo...")
     
     return dynamics_simulator
-
 
 def process_and_plot_results(dynamics_simulator, simulation_start_epoch, simulation_end_epoch, bodies_to_propagate, raw_epochs, raw_mass_values):
     """
@@ -283,7 +297,6 @@ def process_and_plot_results(dynamics_simulator, simulation_start_epoch, simulat
     final_mass_from_deps = dependent_variables_array[-1, 3] #this is last row of mass (column 3)
     #chucking in an extra little bit of info on mass rate, should be negative
     mass_rate = (final_mass_from_deps - initial_mass_from_deps) / (final_epoch - simulation_start_epoch)
-
     
     print(
         f"""
@@ -410,8 +423,8 @@ def main():
     raw_epochs, raw_mass_values = load_and_interpolate_mass_data("GOCE-Mass-Properties.txt") 
 
     #define the start and end epochs, format (Y, m, d, H, M, S)
-    simulation_start_epoch = DateTime(2009, 5, 1, 0, 0, 0).to_epoch()
-    simulation_end_epoch = DateTime(2009, 5, 3).to_epoch() 
+    simulation_start_epoch = DateTime(2009, 9, 1, 0, 0, 0).to_epoch()
+    simulation_end_epoch = DateTime(2009, 9, 2).to_epoch() 
 
     #2. Set up the environment
     bodies = setup_environment(simulation_start_epoch)
