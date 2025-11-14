@@ -18,7 +18,7 @@ def load_and_interpolate_mass_data(file_path):
     """
     Loads GOCE mass data from the mass file, puts it into strings using pandas iloc.to_list()
     Puts mass and epoch values into list as correct time format, and floats.
-    Creates a spline interpolator and stores it in a global variable.
+    Creates a Pchip interpolator and stores it in a global variable.
     """
     #get that global goce_mass_interpolator from the beginning, we're going to give it values!
     global goce_mass_interpolator
@@ -440,3 +440,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
