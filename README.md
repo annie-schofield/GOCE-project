@@ -13,10 +13,11 @@ It also takes into account orbital pertubations, modelling spherical harmonic gr
 * **Variable Mass Modelling**: Loads and interpolates real GOCE mass data to provide a time-varying mass to the propagator. This is cool since thrust and drag have a greater effect as mass decreases, and we are modelling this decrease in mass.
 * **Monotonic Interpolation**: Uses `scipy.interpolate.PchipInterpolator` to ensure the mass function is monotonically decreasing, since there are some long gaps in our mass data that can affect interpolation.
 * **Comprehensive Force Model**:
-    * **Earth**: Spherical harmonic gravity (up to degree 12, order 6).
-    * **Moon & Sun**: Point-mass gravity.
-    * **Atmosphere**: `NRLMSISE-00` atmospheric model.
-    * **Aerodynamics**: Constant drag and lift coefficients.
+    * **Earth**: Spherical harmonic gravity (J2) (up to degree 12, order 6), taking into account the fact that the Earth is not perfectly spherical.
+    * **Moon & Sun**: Third bodies, considers as point-mass sources.
+    * **Atmosphere**: `NRLMSISE-00` atmospheric model for Earth.
+    * **Aerodynamics**: Constant drag and lift coefficients to quantify effect of atmosphere on LEO.
+    * **Solar Radiation Pressure (SRP)**: Models the acceleration on the satellite due to photons from Sun transferring momentum.
 * **Detailed plots of data**: Generates three key plots using `matplotlib`:
     1.  **3D Trajectory**: A 3D plot of the GOCE orbit around the Earth.
     2.  **Ground Track**: A 2D plot of the satellite's ground track for the first 3 hours, easily changeable.
@@ -44,6 +45,8 @@ pip install numpy
 pip install matplotlib
 pip install scipy
 ```
+
+You are going to need to be in the tudat-space environment. For more information on tudat installation, see here: [tudat installation].(https://docs.tudat.space/en/latest/getting-started/installation.html#getting-started-installation)
 
 ### 2. Data File
 
