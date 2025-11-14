@@ -46,7 +46,7 @@ pip install matplotlib
 pip install scipy
 ```
 
-You are going to need to be in the tudat-space environment. For more information on tudat installation, see here: [tudat installation].(https://docs.tudat.space/en/latest/getting-started/installation.html#getting-started-installation)
+You are going to need to be in the tudat-space environment. For more information on tudat installation, see here: [tudat installation](https://docs.tudat.space/en/latest/getting-started/installation.html#getting-started-installation)
 
 ### 2. Data File
 
