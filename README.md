@@ -7,7 +7,7 @@ This project performs an orbit propagation of the **GOCE** (*Gravity Field and S
 A key feature of this simulation is the realistic modelling of the satellite's mass. Instead of a constant mass, this script loads real mission data from the `GOCE-Mass-Properties.txt` file, interpolates it, and uses the resulting function to model the satellite's decreasing mass over time (due to propellant consumption).
 It also takes into account orbital pertubations, modelling spherical harmonic gravity using the gcrs_to_itrs rotation model for the Earth and taking into account the atmosphere and aerodynamic drag- important since GOCE is an LEO satellite. I have just added in Solar Radiation Pressure (SRP) too, currently modelling GOCE as a cannonball- I will likely change this to a panelled target in future versions. Relativistic correction to acceleration has been added for completeness, it's effect is minimal- uses Schwarzchild and de Sitter contributions. 
 
-**IMPORTANT: EITHER download `NEW_parameters_varying_GOCE_plot.py` script with the `parameters.ini` file OR just the `varying_mass_GOCE_plot.py`**
+**IMPORTANT:**  to run the `varying_mass_GOCE_plot.py` script you need to download the `parameters.ini` file (containing the parameters) and `GOCE-Mass-Properties` (containting the mass data). `parameters.ini` acts as the configuration file. 
 
 ## Key Features
 
@@ -61,15 +61,9 @@ The script uses `spice.load_standard_kernels()` to load standard SPICE kernels. 
 
 ### 4. Execute the Script
 
-You have two options:
+*Added Easily changable parameters (for experimentation!)*
 
-**Option 1: Easily changable parameters (for experimentation!)**
-
-You will need to download the `NEW_parameters_varying_GOCE_plot.py` script, alongside the `parameters.ini` file. You can change the parameters directly within this .ini file.
-
-**Option 2: Hard coded parameters (for easy testing/aaaa I don't know what I'm doing moments)**
-
-The `varying_mass_GOCE_plot.py` does not have an associated parameters file, all the parameters are hard coded. In essence, this is an old version (here as a backup really).
+You will need to download the `NEW_parameters_varying_GOCE_plot.py` script, alongside the `parameters.ini` file. You can change the parameters directly within this .ini file. Make sure you are in the tudat-space envionment.
 
 ### 5. View Results
 
