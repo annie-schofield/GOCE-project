@@ -5,7 +5,7 @@
 This project performs an orbit propagation of the **GOCE** (*Gravity Field and Steady-State Ocean Circulation Explorer*) satellite using the `tudatpy` orbital mechanics library and compares it to data available from the ESA website here [ESA GOCE Mass Properties](https://earth.esa.int/eogateway/missions/data/goce-mass-properties).
 
 A key feature of this simulation is the realistic modelling of the satellite's mass. Instead of a constant mass, this script loads real mission data from the `GOCE-Mass-Properties.txt` file, interpolates it, and uses the resulting function to model the satellite's decreasing mass over time (due to propellant consumption).
-It also takes into account orbital pertubations, modelling spherical harmonic gravity using the gcrs_to_itrs rotation model for the Earth and taking into account the atmosphere and aerodynamic drag- important since GOCE is an LEO satellite. I have just added in Solar Radiation Pressure (SRP) too, currently modelling GOCE as a cannonball- I will likely change this to a panelled target in future versions. 
+It also takes into account orbital pertubations, modelling spherical harmonic gravity using the gcrs_to_itrs rotation model for the Earth and taking into account the atmosphere and aerodynamic drag- important since GOCE is an LEO satellite. I have just added in Solar Radiation Pressure (SRP) too, currently modelling GOCE as a cannonball- I will likely change this to a panelled target in future versions. Relativistic correction to acceleration has been added for completeness, it's effect is minimal- uses Schwarzchild and de Sitter contributions. 
 
 ## Key Features
 
@@ -18,6 +18,7 @@ It also takes into account orbital pertubations, modelling spherical harmonic gr
     * **Atmosphere**: `NRLMSISE-00` atmospheric model for Earth.
     * **Aerodynamics**: Constant drag and lift coefficients to quantify effect of atmosphere on LEO.
     * **Solar Radiation Pressure (SRP)**: Models the acceleration on the satellite due to photons from Sun transferring momentum.
+    * **Relativistic Correction**: Models the Schwarzchild and de Sitter contributions to GOCE acceleration.
 * **Detailed plots of data**: Generates three key plots using `matplotlib`:
     1.  **3D Trajectory**: A 3D plot of the GOCE orbit around the Earth.
     2.  **Ground Track**: A 2D plot of the satellite's ground track for the first 3 hours, easily changeable.
