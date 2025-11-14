@@ -18,7 +18,7 @@ def load_and_interpolate_mass_data(file_path):
     """
     Loads GOCE mass data from the mass file, puts it into strings using pandas iloc.to_list()
     Puts mass and epoch values into list as correct time format, and floats.
-    Creates a Pchip interpolator and stores it in a global variable.
+    Creates a PChip interpolator and stores it in a global variable.
     """
     #get that global goce_mass_interpolator from the beginning, we're going to give it values!
     global goce_mass_interpolator
@@ -71,6 +71,8 @@ def setup_environment(simulation_start_epoch):
     """
     Sets up accurate rotation model and default Earth settings, gives Earth atmosphere.
     Sets up empty settings for GOCE, defines mass_function from interpolated mass at any time, and initial mass. 
+    Defines solar radiation pressure (SRP) settings for Sun (radiation source).
+    Defines SRP settings for GOCE (radiation target).
     Defines rigid_body_settings and aero_coefficient settings for GOCE.
     Returns the SystemOfBodies object.
     """
@@ -157,7 +159,11 @@ def setup_environment(simulation_start_epoch):
 def setup_propagation(bodies, simulation_start_epoch, simulation_end_epoch):
     """
     Defines the bodies that we are worrying about.
-    Defines the acceleration settings for our satellite.
+    Defines the acceleration settings for our satellite includinf: 
+        - aerodynamic drag
+        - relativistic correction
+        - spherical harmonic gravity
+        - third bodies.
     Defines the initial_state and does funky shape stuff.
     Defines integrator (variable step RK4).
     Defines propagator (translational, mass handled in setup_propagation).
@@ -168,6 +174,12 @@ def setup_propagation(bodies, simulation_start_epoch, simulation_end_epoch):
     central_bodies = ["Earth"]
 
     #2.1:define acceleration models
+    #setting up the parameters for relatavistic correction to acceleration
+    use_schwarzschild = True
+    use_lense_thirring = False
+    use_de_sitter = True
+    #define central body for De-Sitter term, this is the third body (Sun here)
+    de_sitter_central_body = "Sun"
     
     #orders needed for spherical_harmonic_gravity, the earth is squashed
     maximum_degree = 12
@@ -178,7 +190,12 @@ def setup_propagation(bodies, simulation_start_epoch, simulation_end_epoch):
         Earth=[
             propagation_setup.acceleration.spherical_harmonic_gravity(
                 maximum_degree, maximum_order),
-            propagation_setup.acceleration.aerodynamic()
+            propagation_setup.acceleration.aerodynamic(),
+            propagation_setup.acceleration.relativistic_correction(
+               use_schwarzschild,
+               use_lense_thirring,
+               use_de_sitter,
+               de_sitter_central_body,)
             ],
         Moon = [propagation_setup.acceleration.point_mass_gravity()],
         Sun = [
@@ -375,28 +392,24 @@ And the velocity vector of GOCE is [km/s]: {final_velocity / 1E3}
     ax.set_title("GOCE Mass During Simulation")
     ax.plot(relative_time_hours_all, mass, label="Interpolated data")
 
-    # --- MODIFIED LINES FOR FILTERING ---
-    # Convert raw data lists to numpy arrays
+    #convert raw data lists to numpy arrays
     raw_epochs_array = np.array(raw_epochs)
     raw_mass_array = np.array(raw_mass_values)
     
-    # Create a boolean mask to filter epochs within the simulation time range
+    #create a boolean mask to filter epochs within the simulation time range
     time_mask = (raw_epochs_array >= simulation_start_epoch) & (raw_epochs_array <= simulation_end_epoch)
     
-    # Apply the mask to get only the points within the simulation
+    #apply the mask to get only the points within the simulation
     filtered_epochs = raw_epochs_array[time_mask]
     filtered_masses = raw_mass_array[time_mask]
     
-    # Convert the *filtered* epochs to relative time in hours
+    #convert the filtered epochs to relative time in hours
     filtered_relative_time_hours = (filtered_epochs - simulation_start_epoch) / 3600
     
-    # Plot only the filtered data points
+    #plot only the filtered data points
     ax.scatter(filtered_relative_time_hours, filtered_masses, 
                color='red', marker='x', label="Actual data points")
-    
-    ax.legend()  # Add legend to show the labels
-    # --- END OF MODIFIED LINES ---
-
+    ax.legend()
     ax.set_xlabel("Time [hours]")
     ax.set_ylabel("Mass [kg]")
     ax.grid(True)
@@ -419,12 +432,12 @@ def main():
     spice.clear_kernels()
     spice.load_standard_kernels()
     
-    #1. load mass data, process it and turn it into something readable, interpolation time
+    #1. load mass data, process it and turn it into something readable, interpolation time, assign raw mass values
     raw_epochs, raw_mass_values = load_and_interpolate_mass_data("GOCE-Mass-Properties.txt") 
 
     #define the start and end epochs, format (Y, m, d, H, M, S)
-    simulation_start_epoch = DateTime(2009, 9, 1, 0, 0, 0).to_epoch()
-    simulation_end_epoch = DateTime(2009, 9, 2).to_epoch() 
+    simulation_start_epoch = DateTime(2011, 7, 1, 0, 0, 0).to_epoch()
+    simulation_end_epoch = DateTime(2011, 7, 3).to_epoch() 
 
     #2. Set up the environment
     bodies = setup_environment(simulation_start_epoch)
@@ -440,4 +453,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
