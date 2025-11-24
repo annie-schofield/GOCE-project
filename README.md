@@ -73,6 +73,11 @@ You will need to download the `comparison_plots.py` script, alongside the `param
 ### 5. View Results
 
 The script will print simulation details to the console, including initial/final mass and state vectors. It will then display the plots (3D trajectory, ground track, and mass over time, and residuals if you are using the comparison plots).
-Congratulations, it worked! 
+Congratulations, it worked!
+
+### 6. Example Plots
+
+The below plots are an example of this new comparison code- they use data from the GO_CONS_SST_PSO_2__20091001T235945_20091002T235944_0201.DBL, which has been processed and is in this repository as `goce_orbit_data.csv`- data from the 1st October 2009. They use the parameters and mass data from this repository. The Mean Position Error (residual) was 25572.94 m for this example. You can see visually that our period is a bit off-look at the curvy residual plot- but that the approximation is relatively good- the blue and red are combining to make purple!
+![Example plots](EXAMPLE_PLOTS.png)
 
 *Note: not all numbers are accurate to GOCE, some are placeholders/approximations for the meantime. I am doing plenty of research, some of this stuff is a little tricky to find!*
