@@ -631,7 +631,7 @@ def optimize_initial_velocity(initial_state_guess, simulation_start_epoch, simul
 
     #run optimiser
     print("Optimizing velocity vector...")
-    result = minimize(objective_wrapper, vel_guess, method='Nelder-Mead', options={'maxiter': 50, 'disp': True})
+    result = minimize(objective_wrapper, vel_guess, method='Nelder-Mead', options={'maxiter': 100, 'disp': True})
     
     print('------------------------------------------------------')
     print("OPTIMIZATION COMPLETE")
@@ -698,7 +698,20 @@ def main():
             initial_state_final = optimized_state
         else:
             initial_state_final = None
+            
+        mu_earth = bodies.get("Earth").gravitational_parameter
+        kep_final = element_conversion.cartesian_to_keplerian(initial_state_final, mu_earth)
+        
+        print("Final optimised orbital elements:")
+        print(f"Semi-major Axis:     {kep_final[0]:.2f} m")
+        print(f"Eccentricity:        {kep_final[1]:.6f}")
+        print(f"Inclination:         {np.rad2deg(kep_final[2]):.4f} deg")
+        print(f"Arg of Periapsis:    {np.rad2deg(kep_final[3]):.4f} deg")
+        print(f"RAAN:                {np.rad2deg(kep_final[4]):.4f} deg")
+        print(f"True Anomaly:        {np.rad2deg(kep_final[5]):.4f} deg")
+        print('------------------------------------------------------')
 
+        
         #setup final propagation (full 24 hrs)
         print("Setting up final high-precision simulation...")
         propagator_settings, bodies_to_propagate = setup_propagation(
