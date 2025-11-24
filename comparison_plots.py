@@ -467,7 +467,36 @@ def process_and_plot_results(dynamics_simulator, simulation_start_epoch, simulat
     ax.grid(True)
     ax.legend()
     plt.show()
-    print("All plots complete.")
+    
+    #plot 3:mass over time, shows our interpolation working essentially, should be fairly linear and definitely negative gradient. Worry if not.
+    fig, ax = plt.subplots(tight_layout=True, dpi=plot_dpi)
+    relative_time_hours_all = (dependent_variables_array[:, 0] - simulation_start_epoch) / 3600
+    mass = dependent_variables_array[:, 3]
+    ax.set_title("GOCE Mass During Simulation")
+    ax.plot(relative_time_hours_all, mass, label="Simulated (Interpolated)")
+
+    #convert raw data lists to numpy arrays
+    raw_epochs_array = np.array(raw_epochs)
+    raw_mass_array = np.array(raw_mass_values)
+    
+    #create a boolean mask to filter epochs within the simulation time range
+    time_mask = (raw_epochs_array >= simulation_start_epoch) & (raw_epochs_array <= simulation_end_epoch)
+    
+    #apply the mask to get only the points within the simulation
+    filtered_epochs = raw_epochs_array[time_mask]
+    filtered_masses = raw_mass_array[time_mask]
+    
+    #convert the filtered epochs to relative time in hours
+    filtered_relative_time_hours = (filtered_epochs - simulation_start_epoch) / 3600
+    
+    #plot only the filtered data points
+    ax.scatter(filtered_relative_time_hours, filtered_masses, 
+               color='red', marker='x', label="Raw Data Points")
+    ax.legend()
+    ax.set_xlabel("Time [hours]")
+    ax.set_ylabel("Mass [kg]")
+    ax.grid(True)
+    plt.show()
 
 def calculate_and_plot_residuals(sim_epochs, sim_states, real_data_inertial, plot_dpi):
     """
