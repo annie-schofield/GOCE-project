@@ -9,6 +9,9 @@ It also takes into account orbital pertubations, modelling spherical harmonic gr
 
 **IMPORTANT:**  to run the `varying_mass_GOCE_plot.py` script you need to download the `parameters.ini` file (containing the parameters) and `GOCE-Mass-Properties` (containting the mass data). `parameters.ini` acts as the configuration file. 
 
+
+**MORE IMPORTANT:** I have done quite a bit of work behind the scenes and haven't updated this README... oops! Anyway, I downloaded actual GOCE data from [ESA GOCE Level 2](https://earth.esa.int/eogateway/catalog/goce-level-2), specifically the SST_PSO_2_ data. Since I only have 4GB RAM I wrote some code to process this file (`create_actual_data_file.py`), and generate a csv file (`goce_orbit_data.csv`) that will contain around 1% of the positions from the GOCE data. I have uploaded an example for ease of use. I then plotted this actual GOCE data onto my existing plots. I realised at this point that using the parameters that I initially found were not going to work- so I used the first two data points to estimate the initial velocity and hence the initial orbital elements. I then calculated and plotted the residuals. This updated code is in `comparison_plots.py`, and this is the one that you should run!
+
 ## Key Features
 
 * **Orbit Propagation**: Uses tudatpy to simulate the satellite's trajectory.
@@ -25,6 +28,7 @@ It also takes into account orbital pertubations, modelling spherical harmonic gr
     1.  **3D Trajectory**: A 3D plot of the GOCE orbit around the Earth.
     2.  **Ground Track**: A 2D plot of the satellite's ground track for the first 3 hours, easily changeable.
     3.  **Mass vs. Time**: A plot showing the satellite's mass decreasing over the simulation period, overlaid with the original raw data points from the mass file to validate the interpolation.
+    4.  **Actual data**: Plots the actual GOCE trajectory data and calculates residuals for side by side comparison.
 
 ## Things Used
 
@@ -34,6 +38,7 @@ It also takes into account orbital pertubations, modelling spherical harmonic gr
 * **`pandas`**: For loading and parsing the mass data file.
 * **`numpy`**: For numerical operations and data handling.
 * **`matplotlib`**: For all data visualization.
+* **`configparser`**: To run `parameters.ini` as the configuration file.
 
 ## How to Run
 
@@ -61,13 +66,13 @@ The script uses `spice.load_standard_kernels()` to load standard SPICE kernels. 
 
 ### 4. Execute the Script
 
-*Added Easily changable parameters (for experimentation!)*
+*Added easily changable parameters (for experimentation!)*
 
-You will need to download the `NEW_parameters_varying_GOCE_plot.py` script, alongside the `parameters.ini` file. You can change the parameters directly within this .ini file. Make sure you are in the tudat-space envionment.
+You will need to download the `comparison_plots.py` script, alongside the `parameters.ini` file, `GOCE-Mass-Properties.txt` and `GOCE_orbit_data.csv`. You can change the parameters directly within this .ini file, and run whatever orbit data you want- the one in this reposititory is given as an example. Make sure you are in the tudat-space envionment.
 
 ### 5. View Results
 
-The script will print simulation details to the console, including initial/final mass and state vectors. It will then display the three plots (3D trajectory, ground track, and mass over time).
+The script will print simulation details to the console, including initial/final mass and state vectors. It will then display the plots (3D trajectory, ground track, and mass over time, and residuals if you are using the comparison plots).
 Congratulations, it worked! 
 
 *Note: not all numbers are accurate to GOCE, some are placeholders/approximations for the meantime. I am doing plenty of research, some of this stuff is a little tricky to find!*
