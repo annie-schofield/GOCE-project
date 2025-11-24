@@ -3,6 +3,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from datetime import datetime as py_datetime
 from scipy.interpolate import PchipInterpolator, interp1d
+from scipy.optimize import minimize
 from tudatpy.interface import spice
 from tudatpy import dynamics, constants
 from tudatpy.dynamics import environment_setup, propagation_setup
@@ -95,7 +96,7 @@ def get_initial_state_from_csv(real_data, bodies):
     
     # Create a new velocity vector with the correct speed but the derived direction
     velocity_corrected = v_direction * v_circular_mag
-    
+    print('------------------------------------------------------')
     print(f"Linear Velocity Estimate: {np.linalg.norm(v_linear):.2f} m/s")
     print(f"Corrected Circular Velocity: {v_circular_mag:.2f} m/s")
     
@@ -105,6 +106,7 @@ def get_initial_state_from_csv(real_data, bodies):
     # Convert to keplerian elements and output them
     keplerian_elements = element_conversion.cartesian_to_keplerian(initial_state, mu_earth)
     
+    print('------------------------------------------------------')
     print("Calculated initial orbital elements (from CSV):")
     print(f"Semi-major Axis:     {keplerian_elements[0]:.2f} m")
     print(f"Eccentricity:        {keplerian_elements[1]:.6f}")
@@ -112,7 +114,8 @@ def get_initial_state_from_csv(real_data, bodies):
     print(f"Arg of Periapsis:    {np.rad2deg(keplerian_elements[3]):.4f} deg")
     print(f"RAAN:                {np.rad2deg(keplerian_elements[4]):.4f} deg")
     print(f"True Anomaly:        {np.rad2deg(keplerian_elements[5]):.4f} deg")
-    
+    print('------------------------------------------------------')
+
     return initial_state, t0
 def load_and_interpolate_mass_data(config):
     """
@@ -380,7 +383,7 @@ def transform_real_data_to_inertial(real_data):
     """
     Converts the data into the inertial frame, from ITRS to GCRS to forcibly make it function.
     """
-    print("Transforming Real Data from ITRS to GCRS...")
+    print("Transforming actual data from ITRS to GCRS...")
     transformed_x, transformed_y, transformed_z = [], [], []
     epochs = real_data['epochs']
     
@@ -471,12 +474,12 @@ def calculate_and_plot_residuals(sim_epochs, sim_states, real_data_inertial, plo
     Calculates and plots the position error magnitude between the simulation
     and the real data (converted to inertial frame).
     """
-    print("Calculating Residuals (Simulation vs Real Data)...")
+    print("Calculating residuals (simulation vs actual data)...")
     
     real_epochs = real_data_inertial['epochs']
     real_pos = np.vstack((real_data_inertial['x'], real_data_inertial['y'], real_data_inertial['z'])).T
     
-    # Filter real data to be within simulation time range
+    #filter real data to be within simulation time range
     valid_mask = (real_epochs >= sim_epochs[0]) & (real_epochs <= sim_epochs[-1])
     real_epochs = real_epochs[valid_mask]
     real_pos = real_pos[valid_mask]
@@ -485,7 +488,7 @@ def calculate_and_plot_residuals(sim_epochs, sim_states, real_data_inertial, plo
         print("Error: No overlap between simulation and real data timestamps.")
         return
 
-    # Create interpolators for Simulation X, Y, Z to match Real Data timestamps
+    #create interpolators for simulation X, Y, Z to match real data timestamps
     interp_x = interp1d(sim_epochs, sim_states[:, 0], kind='cubic')
     interp_y = interp1d(sim_epochs, sim_states[:, 1], kind='cubic')
     interp_z = interp1d(sim_epochs, sim_states[:, 2], kind='cubic')
@@ -496,16 +499,17 @@ def calculate_and_plot_residuals(sim_epochs, sim_states, real_data_inertial, plo
         interp_z(real_epochs)
     )).T
     
-    # Calculate Residuals (Vector Difference)
+    #calculate residuals (Vector Difference)
     pos_diff = sim_pos_at_real_times - real_pos
     
-    # Calculate Magnitude of Error (RSS Position Error)
+    #calculate magnitude of error (RSS Position Error)
     rss_error = np.linalg.norm(pos_diff, axis=1)
-    
+    print('------------------------------------------------------')
     print(f"Mean Position Error: {np.mean(rss_error):.2f} m")
     print(f"Max Position Error:  {np.max(rss_error):.2f} m")
-    
-    # Plot Residuals
+    print('------------------------------------------------------')
+
+    #plot residuals
     fig, ax = plt.subplots(figsize=(8, 5), dpi=plot_dpi)
     relative_time_hours = (real_epochs - real_epochs[0]) / 3600
     
@@ -517,68 +521,212 @@ def calculate_and_plot_residuals(sim_epochs, sim_states, real_data_inertial, plo
     ax.grid(True)
     ax.legend()
     plt.show()
+    
+def setup_models_for_optimization(bodies, config, simulation_end_epoch):
+    """
+    Pre-builds the acceleration models and integrator settings ONCE 
+    so we don't have to recreate them 50 times during the loop.
+    """
+    bodies_to_propagate = ["GOCE"]
+    central_bodies = ["Earth"]
+    
+    cfg_earth = config['ENV_EARTH']
+    earth_gravity_settings = propagation_setup.acceleration.spherical_harmonic_gravity(
+        cfg_earth.getint('gravity_max_degree'), cfg_earth.getint('gravity_max_order'))
+    
+    cfg_physics = config['RELATIVISTIC_CORRECTION']
+    relativistic_settings = propagation_setup.acceleration.relativistic_correction(
+        cfg_physics.getboolean('use_schwarzschild'), False,
+        cfg_physics.getboolean('use_de_sitter'), cfg_physics.get('de_sitter_central_body')
+    )
+    
+    #no Aerodynamic drag during optimization (makes things quicker, and GOCE not significant drag)
+    acceleration_settings_GOCE = dict(
+        Earth=[earth_gravity_settings, relativistic_settings],
+        Moon=[propagation_setup.acceleration.point_mass_gravity()],
+        Sun=[propagation_setup.acceleration.point_mass_gravity(), propagation_setup.acceleration.radiation_pressure()]
+    )
+    
+    acceleration_models = propagation_setup.create_acceleration_models(
+        bodies, {"GOCE": acceleration_settings_GOCE}, bodies_to_propagate, central_bodies)
+
+    #use looser tolerance (1.0E-6) for the optimizer to make it run fast
+    integrator_settings = propagation_setup.integrator.runge_kutta_variable_step(
+        initial_time_step=60.0,
+        coefficient_set=propagation_setup.integrator.CoefficientSets.rkf_45,
+        step_size_control_settings=propagation_setup.integrator.step_size_control_custom_blockwise_scalar_tolerance(
+            propagation_setup.integrator.standard_cartesian_state_element_blocks, 1.0E-6, 1.0E-6),
+        step_size_validation_settings=propagation_setup.integrator.step_size_validation(0.001, 1000.0)
+    )
+    
+    termination_settings = propagation_setup.propagator.time_termination(simulation_end_epoch)
+    
+    return acceleration_models, integrator_settings, termination_settings
+
+def simulate_and_calculate_residuals(velocity_guess, position_initial, simulation_start_epoch, 
+                                     bodies, acceleration_models, integrator_settings, termination_settings, 
+                                     real_data_inertial):
+    """
+    Fast cost function. Receives pre-built models and only updates the initial state.
+    Calculates the residuals.
+    """
+    initial_state = np.concatenate([position_initial, velocity_guess])
+    initial_state_translation = initial_state.reshape(-1, 1)
+
+    #create propagator settings 
+    propagator_settings = propagation_setup.propagator.translational(
+        central_bodies=["Earth"], acceleration_models=acceleration_models, 
+        bodies_to_integrate=["GOCE"], initial_states=initial_state_translation, 
+        initial_time=simulation_start_epoch, integrator_settings=integrator_settings, 
+        termination_settings=termination_settings
+    )
+
+    #run simulation
+    dynamics_simulator = dynamics.simulator.create_dynamics_simulator(bodies, propagator_settings)
+    
+    #calculate residuals
+    states_array = result2array(dynamics_simulator.propagation_results.state_history)
+    if states_array.size == 0: return 1e9
+
+    sim_epochs = states_array[:, 0]
+    sim_pos = states_array[:, 1:4]
+    
+    real_epochs = real_data_inertial['epochs']
+    mask = (real_epochs >= sim_epochs[0]) & (real_epochs <= sim_epochs[-1])
+    if not np.any(mask): return 1e9
+    
+    valid_real_epochs = real_epochs[mask]
+    valid_real_pos = np.vstack((real_data_inertial['x'][mask], real_data_inertial['y'][mask], real_data_inertial['z'][mask])).T
+    
+    #interpolate
+    interp_func = interp1d(sim_epochs, sim_pos, axis=0, kind='linear')
+    sim_pos_interp = interp_func(valid_real_epochs)
+    
+    #RMS Error
+    diff = sim_pos_interp - valid_real_pos
+    rms_error = np.sqrt(np.mean(np.sum(diff**2, axis=1)))
+    
+    return rms_error
+
+def optimize_initial_velocity(initial_state_guess, simulation_start_epoch, simulation_end_epoch, bodies, config, real_data_inertial):
+    """
+    Uses minimize from scipy.optimize to reduce the RMS error, uses the initial guess give by our two point approx earlier.
+    """
+    
+    print("STARTING ORBIT DETERMINATION (scipy minimize)")
+    print("Pre-building physics models...")
+    
+    #build models ONCE
+    accel_models, int_settings, term_settings = setup_models_for_optimization(bodies, config, simulation_end_epoch)
+    
+    pos_fixed = initial_state_guess[0:3]
+    vel_guess = initial_state_guess[3:6]
+    
+    #define the loop arguments
+    args = (pos_fixed, simulation_start_epoch, bodies, accel_models, int_settings, term_settings, real_data_inertial)
+
+    def objective_wrapper(v):
+        error = simulate_and_calculate_residuals(v, *args)
+        return error
+
+    #run optimiser
+    print("Optimizing velocity vector...")
+    result = minimize(objective_wrapper, vel_guess, method='Nelder-Mead', options={'maxiter': 50, 'disp': True})
+    
+    print('------------------------------------------------------')
+    print("OPTIMIZATION COMPLETE")
+    print(f"Best RMS Error: {result.fun:.2f} m")
+    print(f"Optimized Velocity: {result.x}")
+    print('------------------------------------------------------')
+
+    return np.concatenate([pos_fixed, result.x])
 
 def main():
     try:
+        #load Configuration & Kernels
         config = load_config('parameters.ini')
         spice.clear_kernels()
         spice.load_standard_kernels()
         
+        #load Data
         raw_epochs, raw_mass_values = load_and_interpolate_mass_data(config)
         real_orbit_data = load_real_orbit_data("goce_orbit_data.csv")
     
-        # Get Start/End Times directly from the CSV if possible, or Config
-        # This aligns the simulation start EXACTLY with the CSV data
+        #define Simulation Time (align with CSV)
         if real_orbit_data is not None:
-             # Override the start time from config with the first timestamp in CSV
-             # This is critical for alignment
+             # Start exactly when the CSV starts
              simulation_start_epoch = real_orbit_data['epochs'][0]
              
-             # Set end time to +1 day from start (or read from config)
-             # simulation_end_epoch = simulation_start_epoch + 86400.0 
-             
-             # Alternatively, stick to config end time if you prefer:
+             #end time from config (+1 day logic)
              cfg_time = config['SIM_TIME']
-             simulation_end_epoch = DateTime(cfg_time.getint('end_year'), cfg_time.getint('end_month'), cfg_time.getint('end_day')+1, 0, 0, 0).to_epoch()
+             simulation_end_epoch = DateTime(
+                 cfg_time.getint('end_year'), cfg_time.getint('end_month'), 
+                 cfg_time.getint('end_day') + 1, 0, 0, 0).to_epoch()
              
              print(f"Simulation Start Epoch aligned to CSV: {simulation_start_epoch}")
         else:
-             # Fallback
+             #fallback if no CSV
              cfg_time = config['SIM_TIME']
-             simulation_start_epoch = DateTime(cfg_time.getint('start_year'), cfg_time.getint('start_month'), cfg_time.getint('start_day'), cfg_time.getint('start_hour'), cfg_time.getint('start_minute'), cfg_time.getint('start_second')).to_epoch()
-             simulation_end_epoch = DateTime(cfg_time.getint('end_year'), cfg_time.getint('end_month'), cfg_time.getint('end_day'), cfg_time.getint('end_hour'), cfg_time.getint('end_minute'), cfg_time.getint('end_second')).to_epoch()
+             simulation_start_epoch = DateTime(
+                 cfg_time.getint('start_year'), cfg_time.getint('start_month'), 
+                 cfg_time.getint('start_day'), cfg_time.getint('start_hour'), 
+                 cfg_time.getint('start_minute'), cfg_time.getint('start_second')).to_epoch()
+             simulation_end_epoch = DateTime(
+                 cfg_time.getint('end_year'), cfg_time.getint('end_month'), 
+                 cfg_time.getint('end_day'), cfg_time.getint('end_hour'), 
+                 cfg_time.getint('end_minute'), cfg_time.getint('end_second')).to_epoch()
 
+        #setup Environment
         bodies = setup_environment(simulation_start_epoch, config)
         
-        # Calculate Initial State from CSV
-        initial_state_override = None
+        #ORBIT DETERMINATION (Optimization)
         if real_orbit_data is not None:
-             initial_state_override, _ = get_initial_state_from_csv(real_orbit_data, bodies)
-        
+            #get Rough Guess from CSV
+            rough_initial_state, _ = get_initial_state_from_csv(real_orbit_data, bodies)
+            
+            #transform Real Data to Inertial (Needed for Optimizer)
+            real_data_inertial = transform_real_data_to_inertial(real_orbit_data)
+            
+            #run Optimization (Refine Velocity on a 2-hour short arc)
+            opt_end_epoch = simulation_start_epoch + 2 * 3600 
+            optimized_state = optimize_initial_velocity(
+                rough_initial_state, simulation_start_epoch, opt_end_epoch, 
+                bodies, config, real_data_inertial
+            )
+            
+            #use the Optimized State for the Final Simulation
+            initial_state_final = optimized_state
+        else:
+            initial_state_final = None
+
+        #setup final propagation (full 24 hrs)
+        print("Setting up final high-precision simulation...")
         propagator_settings, bodies_to_propagate = setup_propagation(
-            bodies, simulation_start_epoch, simulation_end_epoch, config, initial_state_override)
+            bodies, simulation_start_epoch, simulation_end_epoch, config, initial_state_final)
         
+        #run simulation
         dynamics_simulator = run_simulation(bodies, propagator_settings)
 
+        #plot standard results (3D Orbit, Ground Track)
         process_and_plot_results(
             dynamics_simulator, simulation_start_epoch, simulation_end_epoch, 
             bodies_to_propagate, raw_epochs, raw_mass_values, config,
             real_orbit_data=real_orbit_data
         )
-        # 2. Residuals Plot (New Step)
+        
+        #plot residuals
         if real_orbit_data is not None:
-            # Extract results from simulator
+            #extract results for comparison
             states = dynamics_simulator.propagation_results.state_history
             states_array = result2array(states)
-            sim_epochs = states_array[:, 0]
-            sim_pos = states_array[:, 1:4]
             
-            # Transform real data to Inertial Frame so we compare apples-to-apples
-            real_data_inertial = transform_real_data_to_inertial(real_orbit_data)
-            
-            # Calculate and Plot
-            cfg_plot = config['PLOTTING']
-            calculate_and_plot_residuals(sim_epochs, sim_pos, real_data_inertial, cfg_plot.getint('dpi'))
+            if states_array.size > 0:
+                sim_epochs = states_array[:, 0]
+                sim_pos = states_array[:, 1:4]
+                
+                #use the inertial data we already calculated
+                cfg_plot = config['PLOTTING']
+                calculate_and_plot_residuals(sim_epochs, sim_pos, real_data_inertial, cfg_plot.getint('dpi'))
 
     except Exception as e:
         print("--- AN ERROR OCCURRED ---")
