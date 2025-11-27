@@ -1,3 +1,9 @@
+"""
+IMPORTANT NOTE: This file does not contain the actual data plots for comparison. It JUST contains the mass plot. 
+This is essentially an archived, legacy version here for completeness. You should run comparison_plots.py instead for the most up to date version!
+"""
+
+
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -534,3 +540,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
