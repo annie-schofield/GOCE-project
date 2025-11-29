@@ -10,7 +10,7 @@ It also takes into account orbital pertubations, modelling spherical harmonic gr
 **IMPORTANT:**  to run the `varying_mass_GOCE_plot.py` script you need to download the `parameters.ini` file (containing the parameters) and `GOCE-Mass-Properties` (containting the mass data). `parameters.ini` acts as the configuration file. 
 
 
-**EVEN MORE IMPORTANT:** I have done quite a bit of work behind the scenes and haven't updated this README... oops! Anyway, I downloaded actual GOCE data from [ESA GOCE Level 2](https://earth.esa.int/eogateway/catalog/goce-level-2), specifically the SST_PSO_2_ data. Since I only have 4GB RAM I wrote some code to process this file (`create_actual_data_file.py`), and generate a csv file (`goce_orbit_data.csv`) that will contain around 1% of the positions from the GOCE data. I have uploaded an example for ease of use. I then plotted this actual GOCE data onto my existing plots. I realised at this point that using the parameters that I initially found were not going to work- so I used the first two data points to estimate the initial velocity and hence the initial orbital elements as a best guess, then used this best guess to calculate an impoved initial velocity using minimize from scipy.optimize. I then calculated and plotted the residuals. This updated code is in `comparison_plots.py`, and this is the one that you should run!
+**EVEN MORE IMPORTANT:** I have done quite a bit of work behind the scenes and haven't updated this README... oops! Anyway, I downloaded actual GOCE data from [ESA GOCE Level 2](https://earth.esa.int/eogateway/catalog/goce-level-2), specifically the SST_PSO_2_ data. Since I only have 4GB RAM I wrote some code to process this file (`create_actual_data_file.py`), and generate a csv file (`goce_orbit_data.csv`) that will contain around 1% of the positions from the GOCE data. I have uploaded an example for ease of use. I then plotted this actual GOCE data onto my existing plots. I realised at this point that using the parameters that I initially found were not going to work- so I used the first two data points to estimate the initial velocity and hence the initial orbital elements as a best guess, then used this best guess to calculate an impoved initial velocity using minimize from scipy.optimize. Then I performed a nominal and perturbed simulation and used a linear Least Squares fit to get an improved drag coefficient. I then did the simulation using this optimised initial velocity and drag coefficient. I then calculated and plotted the residuals. This updated code is in `comparison_plots.py`, and this is the one that you should run!
 
 ## Key Features
 
@@ -28,7 +28,7 @@ It also takes into account orbital pertubations, modelling spherical harmonic gr
     1.  **3D Trajectory**: A 3D plot of the GOCE orbit around the Earth.
     2.  **Ground Track**: A 2D plot of the satellite's ground track for the first 3 hours, easily changeable.
     3.  **Mass vs. Time**: A plot showing the satellite's mass decreasing over the simulation period, overlaid with the original raw data points from the mass file to validate the interpolation.
-    4.  **Actual data**: Plots the actual GOCE trajectory data and calculates residuals for side by side comparison.
+    4.  **Actual data**: Plots the actual GOCE trajectory data and calculates residuals for side by side comparison. Optimises velocity and drag coefficient.
 
 ## Things Used
 
@@ -64,7 +64,10 @@ The script will print simulation details to the console, including initial/final
 
 ### 5. Example Plots
 
-The below plots are an example of this new comparison code- they use data from the GO_CONS_SST_PSO_2__20091001T235945_20091002T235944_0201.DBL, which has been processed and is in this repository as `goce_orbit_data.csv`- data from the 1st October 2009. They use the parameters and mass data from this repository. The Mean Position Error (residual) was 25572.94 m for this example. You can see visually that our period is a bit off-look at the curvy residual plot- but that the approximation is relatively good- the blue and red are combining to make purple!
+The below plots are an example of this new comparison code- they use data from the GO_CONS_SST_PSO_2__20091001T235945_20091002T235944_0201.DBL, which has been processed and is in this repository as `goce_orbit_data.csv`- data from the 1st October 2009. They use the parameters and mass data from this repository. The Mean Position Error (residual) was 25572.94 m for this example. You can see visually that our period is a bit off-look at the curvy residual plot- but that the approximation is relatively good- the blue and red are combining to make purple! *NOTE: this just used velocity optimisation*
 ![Example plots](EXAMPLE_PLOTS.png)
+
+**Improved plots** now using velocity AND drag coefficient optimisation! The Mean Position Error is now **6645.77 m** which is way better! You can see interesting periodicity still in the residual plot- I wanted to add in an extra step: after finding new cd, optimise velocity again using drag. This would reduce a lot of this error drift. Unfortunately, I lack the computer power- I left it overnight and tried to run 50 iterations. It sadly did not run, so we are going to have periodic and increasing residuals over time since the period is a little off. 
+![Improved_Example_Plots](IMPROVED_EXAMPLE_PLOTS.png)
 
 *Note: not all numbers are accurate to GOCE, some are placeholders/approximations for the meantime. I am doing plenty of research, some of this stuff is a little tricky to find!*
